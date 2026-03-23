@@ -90,12 +90,14 @@
 		<dependency>
 			<groupId>com.github.WonkyCraftPlugins</groupId>
 			<artifactId>UtilityLib-Config</artifactId>
-			<version>d6ad77abe1</version>
+			<version>0a381e7920</version>
+			<optional>true</optional>
 		</dependency>
 		<dependency>
 			<groupId>com.github.Wonkglorg</groupId>
 			<artifactId>DatabaseUtils</artifactId>
 			<version>87134d1c01</version>
+			<optional>true</optional>
 		</dependency>
 		<dependency>
 			<groupId>org.geysermc.floodgate</groupId>
