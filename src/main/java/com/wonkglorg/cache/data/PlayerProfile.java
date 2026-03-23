@@ -23,8 +23,7 @@ public record PlayerProfile(@NotNull UUID uuid, String name, long firstJoined, l
 	}
 	
 	public static PlayerProfile from(OfflinePlayer player) {
-		boolean isBedrock = isBedrock(player.getUniqueId());
-		return new PlayerProfile(player.getUniqueId(), player.getName(), player.getFirstPlayed(), player.getLastSeen(), isBedrock);
+		return new PlayerProfile(player.getUniqueId(), player.getName(), player.getFirstPlayed(), player.getLastSeen());
 	}
 	
 	public static boolean isBedrock(UUID uuid) {

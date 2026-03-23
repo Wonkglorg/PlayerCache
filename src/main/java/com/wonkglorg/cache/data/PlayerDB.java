@@ -16,6 +16,25 @@ public class PlayerDB extends SqliteDatabase<FileDataSource>{
 	
 	public PlayerDB(JavaPlugin plugin) {
 		super(new FileDataSource(DatabaseType.SQLITE, plugin.getDataPath().resolve("PlayerData.db")));
+		createTables();
+	}
+	
+	private void createTables() {
+		try(var statement = getConnection().prepareStatement("""
+					CREATE TABLE "players" (
+				 	"uuid"	TEXT NOT NULL,
+				 	"name"	TEXT NOT NULL,
+				 	"first_joined"	TEXT,
+				 	"last_seen"	TEXT,
+				 	"active"	integer NOT NULL,
+				 	"is_bedrock"	INTEGER NOT NULL,
+				 	PRIMARY KEY("uuid","name")
+				 );
+				""")){
+			statement.executeUpdate();
+		} catch(SQLException e){
+			PluginLogger.error("Unable to retrieve Player Profile!");
+		}
 	}
 	
 	public CompletableFuture<PlayerProfile> getProfile(UUID uuid) {

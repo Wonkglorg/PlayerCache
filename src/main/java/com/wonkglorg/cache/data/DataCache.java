@@ -59,6 +59,7 @@ public class DataCache{
 	 */
 	public PlayerProfile getProfileIfCached(String name) {
 		if(name == null || name.isBlank()) return null;
+		name = name.toLowerCase();
 		if(INVALID_USER_REQUESTS.contains(name)) return null;
 		PlayerProfile profile = NAME_CACHE.get(name);
 		
@@ -84,9 +85,9 @@ public class DataCache{
 	public CompletableFuture<PlayerProfile> getProfile(String name) {
 		PlayerProfile cached = getProfileIfCached(name);
 		if(cached != null) return CompletableFuture.completedFuture(cached);
-		
+		final String lowerName = name.toLowerCase();
 		return RegionScheduler.getInstance().runAsync(() -> {
-			OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(name);
+			OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(lowerName);
 			PlayerProfile profile = PlayerProfile.from(offlinePlayer);
 			cacheUserToDb(profile);
 			return profile;
@@ -98,7 +99,7 @@ public class DataCache{
 	}
 	
 	/**
-	 * Returns the uuid of the given player name if cached, if a name is required (with lookups online and database lookups, use {@link #getName(UUID)} (String)}
+	 * Returns the uuid of the given player name if cached, if a name is required (with lookups online and database lookups, use {@link #getProfile(String)}
 	 *
 	 * @param uuid the uuid of the player
 	 * @return the name if found or empty
@@ -122,7 +123,7 @@ public class DataCache{
 		
 		PlayerProfile newProfile = PlayerProfile.from(offlinePlayer);
 		
-		cacheUser(newProfile);
+		cacheUserToDb(newProfile);
 		return newProfile;
 	}
 	
