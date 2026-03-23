@@ -1,0 +1,7 @@
+name: PlayerCache
+version: '1.0'
+main: com.wonkglorg.cache.PlayerCache
+authors: [ Wonkglorg ]
+api-version: '1.21'
+softdepend:
+  - floodgate
