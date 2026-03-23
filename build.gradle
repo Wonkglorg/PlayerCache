@@ -16,11 +16,15 @@ repositories {
         name = "jitpack.io"
         url = "https://jitpack.io"
     }
+    maven {
+        url = uri("https://repo.opencollab.dev/main/")
+    }
 }
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
     compileOnly('org.geysermc.floodgate:api:2.2.4-SNAPSHOT')
+    implementation 'com.github.WonkyCraftPlugins:UtilityLib-Config:d6ad77abe1'
     implementation 'com.github.Wonkglorg:DatabaseUtils:87134d1c01'
 }
 

@@ -1,0 +1,3 @@
+url_resolve_bedrock: "https://mcprofile.io/api/v1/bedrock/fuid/"
+url_resolve_java: "https://mcprofile.io/api/v1/java/uuid/"
+bedrock_prefix: "."
