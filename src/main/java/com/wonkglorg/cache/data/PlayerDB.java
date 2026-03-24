@@ -21,7 +21,7 @@ public class PlayerDB extends SqliteDatabase<FileDataSource>{
 	
 	private void createTables() {
 		try(var statement = getConnection().prepareStatement("""
-					CREATE TABLE "players" (
+					CREATE TABLE IF NOT EXISTS "players" (
 				 	"uuid"	TEXT NOT NULL,
 				 	"name"	TEXT NOT NULL,
 				 	"first_joined"	TEXT,
@@ -33,7 +33,7 @@ public class PlayerDB extends SqliteDatabase<FileDataSource>{
 				""")){
 			statement.executeUpdate();
 		} catch(SQLException e){
-			PluginLogger.error("Unable to retrieve Player Profile!");
+			PluginLogger.error("Unable to create Player Table!", e);
 		}
 	}
 	
@@ -79,8 +79,8 @@ public class PlayerDB extends SqliteDatabase<FileDataSource>{
 	
 	public void addProfile(PlayerProfile profile) {
 		RegionScheduler.getInstance().runAsync(() -> {
-			try(var connection = getConnection()){
-				
+			try{
+				var connection = getConnection();
 				try(var checkStmt = connection.prepareStatement("SELECT 1 FROM players WHERE uuid = ? AND name = ? AND active = 1")){
 					
 					checkStmt.setString(1, profile.uuid().toString());
@@ -118,7 +118,8 @@ public class PlayerDB extends SqliteDatabase<FileDataSource>{
 	
 	public void updateLastSeen(PlayerProfile profile) {
 		RegionScheduler.getInstance().runAsync(() -> {
-			try(var connection = getConnection()){
+			try{
+				var connection = getConnection();
 				try(var checkStmt = connection.prepareStatement("SELECT 1 FROM players WHERE uuid = ? AND name = ? AND active = 1")){
 					
 					checkStmt.setString(1, profile.uuid().toString());

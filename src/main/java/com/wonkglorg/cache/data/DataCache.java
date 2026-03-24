@@ -5,9 +5,9 @@ import com.google.gson.JsonParser;
 import com.wonkglorg.cache.PlayerCache;
 import com.wonkglorg.cache.PluginLogger;
 import com.wonkglorg.cache.RegionScheduler;
-import com.wonkglorg.utilitylib.config.types.Config;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.geysermc.floodgate.api.FloodgateApi;
@@ -19,7 +19,6 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -40,15 +39,27 @@ public class DataCache{
 	 */
 	private static final Map<String, PlayerProfile> NAME_CACHE = new ConcurrentHashMap<>();
 	/**
-	 * Any recent invalid requests, so it doesn't needlessly lookup the same users multiple times
+	 * Any recent invalid cache requests, so it doesn't needlessly lookup the same users multiple times
+	 */
+	private static final Set<String> INVALID_USER_REQUESTS_CACHE = new HashSet<>();
+	/**
+	 * ANy recent invalid requests, so it doesn't needlessly lookup the same users multiple times
 	 */
 	private static final Set<String> INVALID_USER_REQUESTS = new HashSet<>();
 	private final PlayerDB playerDB;
-	private final Config config;
+	private final FileConfiguration config;
 	
 	public DataCache(JavaPlugin plugin) {
 		this.playerDB = new PlayerDB(plugin);
-		this.config = new Config(plugin, Path.of("config.yml"));
+		plugin.saveDefaultConfig();
+		config = plugin.getConfig();
+		config.options().copyDefaults(true);
+		plugin.saveConfig();
+		reload();
+	}
+	
+	private boolean isValidMinecraftName(String name) {
+		return name != null && name.length() > 2;
 	}
 	
 	/**
@@ -58,9 +69,11 @@ public class DataCache{
 	 * @return the uuid if found or empty
 	 */
 	public PlayerProfile getProfileIfCached(String name) {
-		if(name == null || name.isBlank()) return null;
+		if(!isValidMinecraftName(name)){
+			return null;
+		}
 		name = name.toLowerCase();
-		if(INVALID_USER_REQUESTS.contains(name)) return null;
+		if(INVALID_USER_REQUESTS_CACHE.contains(name)) return null;
 		PlayerProfile profile = NAME_CACHE.get(name);
 		
 		if(profile != null) return profile;
@@ -73,29 +86,54 @@ public class DataCache{
 		
 		OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayerIfCached(name);
 		if(offlinePlayer == null){
+			INVALID_USER_REQUESTS_CACHE.add(name);
 			return null;
 		}
 		
 		PlayerProfile newProfile = PlayerProfile.from(offlinePlayer);
 		
-		cacheUser(newProfile);
+		cacheUserToDb(newProfile);
 		return newProfile;
 	}
 	
 	public CompletableFuture<PlayerProfile> getProfile(String name) {
-		PlayerProfile cached = getProfileIfCached(name);
-		if(cached != null) return CompletableFuture.completedFuture(cached);
+		if(!isValidMinecraftName(name)){
+			return CompletableFuture.completedFuture(null);
+		}
 		final String lowerName = name.toLowerCase();
+		PlayerProfile cached = getProfileIfCached(lowerName);
+		if(cached != null) return CompletableFuture.completedFuture(cached);
+		if(INVALID_USER_REQUESTS.contains(lowerName)){
+			return CompletableFuture.completedFuture(null);
+		}
 		return RegionScheduler.getInstance().runAsync(() -> {
-			OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(lowerName);
-			PlayerProfile profile = PlayerProfile.from(offlinePlayer);
-			cacheUserToDb(profile);
-			return profile;
-			
+			try{
+				OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(lowerName);
+				PlayerProfile profile = PlayerProfile.from(offlinePlayer);
+				cacheUserToDb(profile);
+				return profile;
+			} catch(Exception e){
+				PluginLogger.error("No player with the specified name exists!");
+				INVALID_USER_REQUESTS.add(lowerName);
+				return null;
+			}
 		});
 	}
 	
-	public void onShutdown() {
+	public void reload() {
+		PlayerCache.getInstance().reloadConfig();
+		UUID_CACHE.clear();
+		NAME_CACHE.clear();
+		INVALID_USER_REQUESTS.clear();
+		INVALID_USER_REQUESTS_CACHE.clear();
+		for(var player : Bukkit.getOnlinePlayers()){
+			PlayerProfile profile = PlayerProfile.from(player);
+			UUID_CACHE.put(profile.uuid(), profile);
+			NAME_CACHE.put(profile.name().toLowerCase(), profile);
+		}
+		if(config.getBoolean("index_offline_players", false)){
+			indexOfflinePlayers();
+		}
 	}
 	
 	/**
@@ -241,5 +279,18 @@ public class DataCache{
 			
 			return null;
 		}, NAME_RESOLVE_EXECUTOR);
+	}
+	
+	private void indexOfflinePlayers() {
+		/*
+		for(var player : Bukkit.getOfflinePlayers()){
+			PluginLogger.info("<green>Loaded Player: <gold>%s<gray>(%s) <blue>first_joined:%s <yellow>last_seen:%s".formatted(
+					player.getName(),
+					player.getUniqueId(),
+					player.getFirstPlayed(),
+					player.getLastSeen()));
+		//save to db
+		}
+		 */
 	}
 }

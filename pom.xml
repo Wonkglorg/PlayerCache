@@ -88,15 +88,9 @@
 			<scope>provided</scope>
 		</dependency>
 		<dependency>
-			<groupId>com.github.WonkyCraftPlugins</groupId>
-			<artifactId>UtilityLib-Config</artifactId>
-			<version>0a381e7920</version>
-			<optional>true</optional>
-		</dependency>
-		<dependency>
 			<groupId>com.github.Wonkglorg</groupId>
 			<artifactId>DatabaseUtils</artifactId>
-			<version>87134d1c01</version>
+			<version>f83e7d8168</version>
 			<optional>true</optional>
 		</dependency>
 		<dependency>
