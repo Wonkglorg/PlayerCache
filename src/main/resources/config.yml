@@ -2,4 +2,4 @@ url_resolve_bedrock: "https://mcprofile.io/api/v1/bedrock/fuid/"
 url_resolve_java: "https://mcprofile.io/api/v1/java/uuid/"
 bedrock_prefix: "."
 #If all offline players should be indexed on next startup / (playercache reload) command
-index_offline_players: true
+index_offline_players: false
