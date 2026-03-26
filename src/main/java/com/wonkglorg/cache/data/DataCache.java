@@ -63,7 +63,7 @@ public class DataCache{
 	}
 	
 	/**
-	 * Returns the uuid of the given player name if cached, if a name is required (with lookups online and database lookups, use {@link #getProfile(String)}
+	 * Returns the PlayerProfile of the given player name if cached
 	 *
 	 * @param name the name of the player, case insensitive
 	 * @return the uuid if found or empty
@@ -96,6 +96,12 @@ public class DataCache{
 		return newProfile;
 	}
 	
+	/**
+	 * Returns the PlayerProfile of the given player name
+	 *
+	 * @param name the name of the player, case insensitive
+	 * @return the uuid if found or empty
+	 */
 	public CompletableFuture<PlayerProfile> getProfile(String name) {
 		if(!isValidMinecraftName(name)){
 			return CompletableFuture.completedFuture(null);
@@ -133,6 +139,8 @@ public class DataCache{
 		}
 		if(config.getBoolean("index_offline_players", false)){
 			indexOfflinePlayers();
+			config.set("index_offline_players", false);
+			PlayerCache.getInstance().saveConfig();
 		}
 	}
 	
