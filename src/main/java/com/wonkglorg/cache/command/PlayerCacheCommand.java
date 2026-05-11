@@ -67,6 +67,7 @@ public class PlayerCacheCommand extends AbstractCommand{
 	
 	private int reload(CommandContext<CommandSourceStack> ctx) {
 		PlayerCache.getInstance().dataCache().reload();
+		ctx.getSource().getSender().sendMessage(toComponent("<green>Reloaded Player Cache!"));
 		return 0;
 	}
 }
