@@ -44,6 +44,7 @@ public interface PlayerCacheService{
 	 * @return the name if found or empty
 	 */
 	CompletableFuture<PlayerProfile> getProfile(UUID uuid);
+
 	
 	/**
 	 * Returns the PlayerProfile of the given player name, if the player has not joined the server before requests it from the configuration defined web endpoint
@@ -51,6 +52,7 @@ public interface PlayerCacheService{
 	 * @param name the name of the player, case-insensitive
 	 * @return the uuid if found or empty
 	 */
+		/*
 	CompletableFuture<PlayerProfile> getProfileOrRequest(String name);
 	
 	/**
@@ -59,5 +61,8 @@ public interface PlayerCacheService{
 	 * @param uuid the uuid of the player
 	 * @return the name if found or empty
 	 */
+		/*
 	CompletableFuture<PlayerProfile> getProfileOrRequest(UUID uuid);
+	
+		 */
 }

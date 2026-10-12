@@ -1,7 +1,5 @@
-#The bedrock url to use to resolve a web request
-url_resolve_bedrock: "https://mcprofile.io/api/v1/bedrock/fuid/"
-#The java url to use to resolve a web request
-url_resolve_java: "https://mcprofile.io/api/v1/java/uuid/"
+#Name to uuid resolver
+name-to-uuid: "https://api.geysermc.org/v2/utils/uuid/bedrock_or_java/<username>?prefix=."
 bedrock_prefix: "."
 #If all offline players should be indexed on next startup / (playercache reload) command
 index_offline_players: false

@@ -4,14 +4,12 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.wonkglorg.minecraft.cache.PlayerCache;
 import com.wonkglorg.minecraft.cache.PluginLogger;
-import com.wonkglorg.minecraft.cache.RegionScheduler;
 import com.wonkglorg.minecraft.cache.service.PlayerCacheService;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.geysermc.floodgate.api.FloodgateApi;
 import org.jetbrains.annotations.NotNull;
 import org.jspecify.annotations.Nullable;
 
@@ -24,14 +22,12 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Stream;
@@ -47,14 +43,10 @@ public class DataCache implements PlayerCacheService{
 	 */
 	private static final Map<String, PlayerProfile> NAME_CACHE = new ConcurrentHashMap<>();
 	/**
-	 * Any recent invalid cache requests, so it doesn't needlessly lookup the same users multiple
-	 * times
+	 * Any recent invalid requests, so it doesn't needlessly lookup the same users multiple times
 	 */
-	private static final Set<String> INVALID_USER_REQUESTS_CACHE = ConcurrentHashMap.newKeySet();
-	/**
-	 * ANy recent invalid requests, so it doesn't needlessly lookup the same users multiple times
-	 */
-	private static final Set<String> INVALID_USER_REQUESTS = new HashSet<>();
+	private static final Set<String> INVALID_USER_REQUESTS = ConcurrentHashMap.newKeySet();
+	
 	private final PlayerDB playerDB;
 	private final FileConfiguration config;
 	
@@ -71,7 +63,7 @@ public class DataCache implements PlayerCacheService{
 		return name != null && name.length() > 2;
 	}
 	
-	public static String normalizeName(String name){
+	public static String normalizeName(String name) {
 		return name.trim().toLowerCase();
 	}
 	
@@ -80,9 +72,6 @@ public class DataCache implements PlayerCacheService{
 			return null;
 		}
 		name = normalizeName(name);
-		if(INVALID_USER_REQUESTS_CACHE.contains(name)){
-			return null;
-		}
 		PlayerProfile profile = NAME_CACHE.get(name);
 		
 		if(profile != null){
@@ -91,7 +80,6 @@ public class DataCache implements PlayerCacheService{
 		
 		OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayerIfCached(name);
 		if(offlinePlayer == null){
-			INVALID_USER_REQUESTS_CACHE.add(name);
 			return null;
 		}
 		
@@ -99,32 +87,6 @@ public class DataCache implements PlayerCacheService{
 		
 		cacheUserToDb(newProfile);
 		return newProfile;
-	}
-	
-	public CompletableFuture<PlayerProfile> getProfile(String name) {
-		if(!isValidMinecraftName(name)){
-			return CompletableFuture.completedFuture(null);
-		}
-		final String lowerName = name.toLowerCase();
-		PlayerProfile cached = getProfileIfCached(lowerName);
-		if(cached != null){
-			return CompletableFuture.completedFuture(cached);
-		}
-		if(INVALID_USER_REQUESTS.contains(lowerName)){
-			return CompletableFuture.completedFuture(null);
-		}
-		return RegionScheduler.getInstance().runAsync(() -> {
-			try{
-				OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(lowerName);
-				PlayerProfile profile = PlayerProfile.from(offlinePlayer);
-				cacheUserToDb(profile);
-				return profile;
-			} catch(Exception e){
-				PluginLogger.error("No player with the specified name exists!");
-				INVALID_USER_REQUESTS.add(lowerName);
-				return null;
-			}
-		});
 	}
 	
 	public @Nullable PlayerProfile getProfileIfCached(UUID uuid) {
@@ -135,12 +97,6 @@ public class DataCache implements PlayerCacheService{
 		
 		if(profile != null){
 			return profile;
-		}
-		
-		PlayerProfile dbProfile = playerDB.getProfile(uuid).join();
-		if(dbProfile != null){
-			cacheUser(dbProfile);
-			return dbProfile;
 		}
 		
 		OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(uuid);
@@ -156,100 +112,96 @@ public class DataCache implements PlayerCacheService{
 		return newProfile;
 	}
 	
-	public CompletableFuture<PlayerProfile> getProfile(UUID uuid) {
-		var cachedProfile = getProfileIfCached(uuid);
-		if(cachedProfile != null){
-			return CompletableFuture.completedFuture(cachedProfile);
+	public CompletableFuture<PlayerProfile> getProfile(String name) {
+		if(!isValidMinecraftName(name)){
+			return null;
 		}
-		CompletableFuture<PlayerProfile> future = new CompletableFuture<>();
-		resolveName(uuid, 3).thenAccept(name -> {
-			PlayerProfile profile = new PlayerProfile(uuid, name, 0, 0);
-			cacheUserToDb(profile);
-			future.complete(profile);
+		name = normalizeName(name);
+		PlayerProfile cached = getProfileIfCached(name);
+		if(cached != null){
+			return CompletableFuture.completedFuture(cached);
+		}
+		if(INVALID_USER_REQUESTS.contains(name)){
+			return CompletableFuture.completedFuture(null);
+		}
+		
+		var future = playerDB.getProfile(name);
+		
+		future.thenAccept(p -> {
+			if(p != null){
+				cacheUser(p);
+			}
 		});
 		
 		return future;
 	}
 	
+	public CompletableFuture<PlayerProfile> getProfile(UUID uuid) {
+		if(uuid == null){
+			return CompletableFuture.completedFuture(null);
+		}
+		
+		var cachedProfile = getProfileIfCached(uuid);
+		if(cachedProfile != null){
+			return CompletableFuture.completedFuture(cachedProfile);
+		}
+		
+		var future = playerDB.getProfile(uuid);
+		
+		future.thenAccept(p -> {
+			if(p != null){
+				cacheUser(p);
+			}
+		});
+		
+		return future;
+	}
+	
+	/*
 	@Override
 	public CompletableFuture<PlayerProfile> getProfileOrRequest(String name) {
-		return null;
+		if(!isValidMinecraftName(name)){
+			return null;
+		}
+		final String normalizedName = normalizeName(name);
+		CompletableFuture<PlayerProfile> future = new CompletableFuture<>();
+		getProfile(normalizedName).thenAccept(p -> {
+			if(p != null){
+				future.complete(p);
+			} else {
+				resolveUuid(normalizedName, 3).thenAccept(uuid -> {
+					PlayerProfile profile = new PlayerProfile(uuid, name, 0, 0);
+					cacheUserToDb(profile);
+					future.complete(profile);
+				});
+			}
+		});
+		return future;
 	}
 	
 	@Override
 	public CompletableFuture<PlayerProfile> getProfileOrRequest(UUID uuid) {
-		return null;
+		CompletableFuture<PlayerProfile> future = new CompletableFuture<>();
+		resolveUuid(uuid, 3).thenAccept(name -> {
+			PlayerProfile profile = new PlayerProfile(uuid, name, 0, 0);
+			cacheUserToDb(profile);
+			future.complete(profile);
+		});
 	}
 	
-	public void reload() {
-		PlayerCache.getInstance().reloadConfig();
-		UUID_CACHE.clear();
-		NAME_CACHE.clear();
-		INVALID_USER_REQUESTS.clear();
-		INVALID_USER_REQUESTS_CACHE.clear();
-		for(var player : Bukkit.getOnlinePlayers()){
-			PlayerProfile profile = PlayerProfile.from(player);
-			UUID_CACHE.put(profile.uuid(), profile);
-			NAME_CACHE.put(profile.name().toLowerCase(), profile);
-		}
-		if(config.getBoolean("index_offline_players", false)){
-			indexOfflinePlayers();
-			config.set("index_offline_players", false);
-			PlayerCache.getInstance().saveConfig();
-		}
-	}
-	
-	public void updateUserLastSeen(@NotNull Player player) {
-		PlayerProfile profile = UUID_CACHE.get(player.getUniqueId());
-		if(profile == null){
-			profile = PlayerProfile.from(player);
-		}
-		profile = profile.setLastSeen(System.currentTimeMillis());
-		UUID_CACHE.put(player.getUniqueId(), profile);
-		NAME_CACHE.put(player.getName().toLowerCase(), profile);
-		playerDB.updateLastSeen(profile);
-		
-	}
-	
-	public void cacheUser(PlayerProfile profile) {
-		UUID_CACHE.put(profile.uuid(), profile);
-		NAME_CACHE.put(profile.name(), profile);
-		INVALID_USER_REQUESTS.remove(profile.name());
-	}
-	
-	public void cacheUserToDb(PlayerProfile profile) {
-		UUID_CACHE.put(profile.uuid(), profile);
-		NAME_CACHE.put(profile.name(), profile);
-		INVALID_USER_REQUESTS.remove(profile.name());
-		playerDB.addProfile(profile);
-	}
-	
-	public void cacheUser(Player player) {
-		cacheUserToDb(PlayerProfile.from(player));
-	}
-	
-	/**
-	 * Resolves a player name from UUID using mcprofile.io
+		/**
+	 * Resolves a player uuid from their name using mcprofile.io
 	 * Supports Java and Bedrock (Floodgate) players.
 	 *
 	 * @param retries number of times to retry on failure
 	 */
+	/*
 	@SuppressWarnings("deprecation")
-	private CompletableFuture<String> resolveName(UUID uuid, int retries) {
+	private CompletableFuture<UUID> resolveUuid(String name, int retries) {
 		return CompletableFuture.supplyAsync(() -> {
 			int backoff = 1000;
 			for(int attempt = 1; attempt <= retries; attempt++){
 				try{
-					boolean isBedrock = false;
-					if(PlayerCache.floodGateEnabled){
-						FloodgateApi api = FloodgateApi.getInstance();
-						if(api != null && api.isFloodgateId(uuid)){
-							isBedrock = true;
-						}
-					}
-					
-					String urlStr = isBedrock ? config.getString("url_resolve_bedrock") + uuid : config.getString("url_resolve_java") + uuid;
-					
 					PluginLogger.info("Resolving name with url: " + urlStr);
 					URL url = new URL(urlStr);
 					HttpURLConnection con = (HttpURLConnection) url.openConnection();
@@ -292,6 +244,55 @@ public class DataCache implements PlayerCacheService{
 			
 			return null;
 		}, NAME_RESOLVE_EXECUTOR);
+	}
+	
+	
+	 */
+	
+	public void reload() {
+		PlayerCache.getInstance().reloadConfig();
+		UUID_CACHE.clear();
+		NAME_CACHE.clear();
+		INVALID_USER_REQUESTS.clear();
+		for(var player : Bukkit.getOnlinePlayers()){
+			PlayerProfile profile = PlayerProfile.from(player);
+			UUID_CACHE.put(profile.uuid(), profile);
+			NAME_CACHE.put(profile.name().toLowerCase(), profile);
+		}
+		if(config.getBoolean("index_offline_players", false)){
+			indexOfflinePlayers();
+			config.set("index_offline_players", false);
+			PlayerCache.getInstance().saveConfig();
+		}
+	}
+	
+	public void updateUserLastSeen(@NotNull Player player) {
+		PlayerProfile profile = UUID_CACHE.get(player.getUniqueId());
+		if(profile == null){
+			profile = PlayerProfile.from(player);
+		}
+		profile = profile.setLastSeen(System.currentTimeMillis());
+		UUID_CACHE.put(player.getUniqueId(), profile);
+		NAME_CACHE.put(player.getName().toLowerCase(), profile);
+		playerDB.updateLastSeen(profile);
+		
+	}
+	
+	public void cacheUser(PlayerProfile profile) {
+		UUID_CACHE.put(profile.uuid(), profile);
+		NAME_CACHE.put(profile.name(), profile);
+		INVALID_USER_REQUESTS.remove(profile.name());
+	}
+	
+	public void cacheUserToDb(PlayerProfile profile) {
+		UUID_CACHE.put(profile.uuid(), profile);
+		NAME_CACHE.put(profile.name(), profile);
+		INVALID_USER_REQUESTS.remove(profile.name());
+		playerDB.addProfile(profile);
+	}
+	
+	public void cacheUser(Player player) {
+		cacheUserToDb(PlayerProfile.from(player));
 	}
 	
 	private void indexOfflinePlayers() {
