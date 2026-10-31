@@ -12,6 +12,14 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Objects;
 import java.util.UUID;
 
+/**
+ * Represents a players profile
+ * @param uuid the uuid of the player
+ * @param name the last known cached name of the player
+ * @param firstJoined when they first joined the server or 0 if never
+ * @param lastSeen when the most recent time when they last logged in the server or 0 if the person has never been on the server or joined for the first time and has not left since
+ * @param isBedrock if the account is a geyser bedrock account (only works if floodgate is present and active on the server)
+ */
 public record PlayerProfile(@NotNull UUID uuid, String name, long firstJoined, long lastSeen, boolean isBedrock){
 	public static final PlayerProfile EMPTY_PROFILE = new PlayerProfile(UUID.fromString("00000000-0000-0000-0000-000000000000"), null, 0, 0, false);
 	
@@ -23,6 +31,9 @@ public record PlayerProfile(@NotNull UUID uuid, String name, long firstJoined, l
 		return new PlayerProfile(this.uuid, this.name, this.firstJoined, lastSeen, this.isBedrock);
 	}
 	
+	/**
+	 * @return true if the player has played on this server before
+	 */
 	public boolean hasPlayedBefore() {
 		return firstJoined > 0;
 	}
@@ -40,15 +51,23 @@ public record PlayerProfile(@NotNull UUID uuid, String name, long firstJoined, l
 	}
 	
 	/**
+	 * @return true if the player is currently online
+	 */
+	public boolean isOnline() {
+		return Bukkit.getPlayer(uuid) != null;
+	}
+	
+	/**
 	 * @return the offline player associated with this profile
 	 */
 	public OfflinePlayer getOfflinePlayer() {
 		return Bukkit.getOfflinePlayer(uuid);
 	}
+	
 	/**
 	 * @return the player associated with this profile or null if not online
 	 */
-	public @Nullable Player getPlayer(){
+	public @Nullable Player getPlayer() {
 		return Bukkit.getPlayer(uuid);
 	}
 	
