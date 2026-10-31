@@ -60,14 +60,14 @@ public record PlayerProfile(@NotNull UUID uuid, String name, long firstJoined, l
 	/**
 	 * @return the offline player associated with this profile
 	 */
-	public OfflinePlayer getOfflinePlayer() {
+	public OfflinePlayer offlinePlayer() {
 		return Bukkit.getOfflinePlayer(uuid);
 	}
 	
 	/**
 	 * @return the player associated with this profile or null if not online
 	 */
-	public @Nullable Player getPlayer() {
+	public @Nullable Player player() {
 		return Bukkit.getPlayer(uuid);
 	}
 	
