@@ -3,8 +3,10 @@ package com.wonkglorg.minecraft.cache;
 import com.wonkglorg.minecraft.cache.command.PlayerCacheCommand;
 import com.wonkglorg.minecraft.cache.data.DataCache;
 import com.wonkglorg.minecraft.cache.listener.PlayerJoinListener;
+import com.wonkglorg.minecraft.cache.service.PlayerCacheService;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import org.bukkit.Bukkit;
+import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class PlayerCache extends JavaPlugin{
@@ -24,6 +26,7 @@ public final class PlayerCache extends JavaPlugin{
 		floodGateEnabled = Bukkit.getPluginManager().getPlugin("floodgate") != null;
 		dataCache = new DataCache(this);
 		getServer().getPluginManager().registerEvents(new PlayerJoinListener(), this);
+		getServer().getServicesManager().register(PlayerCacheService.class, dataCache, this, ServicePriority.Normal);
 		this.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, registrar -> new PlayerCacheCommand().register(registrar));
 	}
 	
